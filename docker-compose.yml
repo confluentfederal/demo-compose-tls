@@ -1,0 +1,418 @@
+---
+services:
+
+  kraftcontroller-0:
+    image: confluentinc/cp-server:${CONFLUENT_VERSION}
+    hostname: kraftcontroller-0
+    container_name: kraftcontroller-0
+    healthcheck:
+      interval: 10s
+      retries: 20
+      test: (echo >/dev/tcp/127.0.0.1/9074) &>/dev/null && exit 0 || exit 1
+    volumes:
+      - ./certs:/etc/kafka/secrets:ro
+    environment:
+      KAFKA_NODE_ID: 9990
+      KAFKA_BROKER_ID: 9990
+
+      KAFKA_CONTROLLER_LISTENER_NAMES: 'CONTROLLER'
+      KAFKA_CONTROLLER_QUORUM_VOTERS: '9990@kraftcontroller-0:9074'
+      KAFKA_INTER_BROKER_LISTENER_NAME: REPLICATION
+  
+      KAFKA_SSL_KEYSTORE_FILENAME: admin.jks
+      KAFKA_SSL_KEYSTORE_CREDENTIALS: admin.credentials
+      KAFKA_SSL_KEY_CREDENTIALS: admin.credentials
+      KAFKA_SSL_TRUSTSTORE_LOCATION: ca.jks
+      KAFKA_SSL_TRUSTSTORE_PASSWORD: password
+
+      KAFKA_LISTENER_NAME_CONTROLLER_SSL_KEY_PASSWORD: password
+      KAFKA_LISTENER_NAME_CONTROLLER_SSL_KEYSTORE_LOCATION: /etc/kafka/secrets/admin.jks
+      KAFKA_LISTENER_NAME_CONTROLLER_SSL_KEYSTORE_PASSWORD: password
+      KAFKA_LISTENER_NAME_CONTROLLER_SSL_TRUSTSTORE_LOCATION: /etc/kafka/secrets/ca.jks
+      KAFKA_LISTENER_NAME_CONTROLLER_SSL_TRUSTSTORE_PASSWORD: password
+
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: CONTROLLER:SSL,REPLICATION:PLAINTEXT
+      KAFKA_LISTENERS: CONTROLLER://:9074
+      KAFKA_LOG_DIRS: '/tmp/kraft-combined-logs'
+      KAFKA_PROCESS_ROLES: 'controller'
+
+      CLUSTER_ID: 'hRm_uPFCTumeQt0KJ1Koxg'
+
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: 0
+      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
+      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
+      KAFKA_SHARE_COORDINATOR_STATE_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_SHARE_COORDINATOR_STATE_TOPIC_MIN_ISR: 1
+      KAFKA_CONFLUENT_SECURITY_EVENT_LOGGER_EXPORTER_KAFKA_TOPIC_REPLICAS: 1
+      KAFKA_CONFLUENT_TIER_METADATA_REPLICATION_FACTOR: 1
+      KAFKA_CONFLUENT_CLUSTER_LINK_METADATA_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_CONFLUENT_BALANCER_TOPIC_REPLICATION_FACTOR: 1
+
+  broker-0:
+    image: confluentinc/cp-server:${CONFLUENT_VERSION}
+    hostname: broker-0
+    container_name: broker-0
+    healthcheck:
+      interval: 10s
+      retries: 20
+      test: (echo >/dev/tcp/127.0.0.1/9071) &>/dev/null && exit 0 || exit 1
+    depends_on:
+      kraftcontroller-0:
+        condition: service_healthy
+    ports:
+      - "9092:9092"
+    volumes:
+      - ./certs:/etc/kafka/secrets:ro
+    environment:
+      KAFKA_BROKER_ID: 0
+      KAFKA_BROKER_RACK: 0
+
+      KAFKA_ADVERTISED_LISTENERS: EXTERNAL://${EXTERNAL_HOSTNAME}:9092,INTERNAL://broker-0:9071,REPLICATION://broker-0:9072
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: CONTROLLER:SSL,EXTERNAL:SSL,INTERNAL:SSL,REPLICATION:PLAINTEXT
+      KAFKA_LISTENERS: EXTERNAL://:9092,INTERNAL://:9071,REPLICATION://:9072
+      KAFKA_CONTROLLER_LISTENER_NAMES: 'CONTROLLER'
+      KAFKA_CONTROLLER_QUORUM_VOTERS: '9990@kraftcontroller-0:9074'
+      KAFKA_INTER_BROKER_LISTENER_NAME: REPLICATION
+      KAFKA_PROCESS_ROLES: 'broker'
+      KAFKA_LOG_DIRS: '/tmp/kraft-combined-logs'
+      CLUSTER_ID: 'hRm_uPFCTumeQt0KJ1Koxg'
+      KAFKA_SUPER_USERS: User:admin
+      KAFKA_DEFAULT_REPLICATION_FACTOR: 1
+      KAFKA_CONFLUENT_SECURITY_EVENT_LOGGER_EXPORTER_KAFKA_TOPIC_REPLICAS: 1
+
+      # TLS Configs
+      KAFKA_SSL_KEYSTORE_FILENAME: admin.jks
+      KAFKA_SSL_KEYSTORE_CREDENTIALS: admin.credentials
+      KAFKA_SSL_KEY_CREDENTIALS: admin.credentials
+      KAFKA_SSL_TRUSTSTORE_LOCATION: ca.jks
+      KAFKA_SSL_TRUSTSTORE_PASSWORD: password
+
+      # Metrics Reporter
+      KAFKA_METRIC_REPORTERS: io.confluent.telemetry.reporter.TelemetryReporter
+      CONFLUENT_METRICS_ENABLE: 'true'
+      CONFLUENT_METRICS_REPORTER_BOOTSTRAP_SERVERS: broker-0:9071
+      CONFLUENT_METRICS_REPORTER_SECURITY_PROTOCOL: SSL
+      CONFLUENT_METRICS_REPORTER_SSL_KEY_PASSWORD: password
+      CONFLUENT_METRICS_REPORTER_SSL_KEYSTORE_LOCATION: /etc/kafka/secrets/admin.jks
+      CONFLUENT_METRICS_REPORTER_SSL_KEYSTORE_PASSWORD: password
+      CONFLUENT_METRICS_REPORTER_SSL_TRUSTSTORE_LOCATION: /etc/kafka/secrets/ca.jks
+      CONFLUENT_METRICS_REPORTER_SSL_TRUSTSTORE_PASSWORD: password
+      CONFLUENT_METRICS_REPORTER_TOPIC_REPLICAS: 1
+
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_CONFLUENT_LICENSE_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_CONFLUENT_BALANCER_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
+      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
+      KAFKA_CONFLUENT_CLUSTER_LINK_METADATA_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_CONFLUENT_TIER_METADATA_REPLICATION_FACTOR: 1
+      KAFKA_CONFLUENT_DURABILITY_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_QUOTAS_TOPIC_REPLICATION_FACTOR: 1
+
+      KAFKA_LISTENER_NAME_CONTROLLER_SSL_KEY_PASSWORD: password
+      KAFKA_LISTENER_NAME_CONTROLLER_SSL_KEYSTORE_LOCATION: /etc/kafka/secrets/admin.jks
+      KAFKA_LISTENER_NAME_CONTROLLER_SSL_KEYSTORE_PASSWORD: password
+      KAFKA_LISTENER_NAME_CONTROLLER_SSL_TRUSTSTORE_LOCATION: /etc/kafka/secrets/ca.jks
+      KAFKA_LISTENER_NAME_CONTROLLER_SSL_TRUSTSTORE_PASSWORD: password
+
+      KAFKA_LISTENER_NAME_INTERNAL_SSL_KEY_PASSWORD: password
+      KAFKA_LISTENER_NAME_INTERNAL_SSL_KEYSTORE_LOCATION: /etc/kafka/secrets/admin.jks
+      KAFKA_LISTENER_NAME_INTERNAL_SSL_KEYSTORE_PASSWORD: password
+      KAFKA_LISTENER_NAME_INTERNAL_SSL_TRUSTSTORE_LOCATION: /etc/kafka/secrets/ca.jks
+      KAFKA_LISTENER_NAME_INTERNAL_SSL_TRUSTSTORE_PASSWORD: password
+
+      KAFKA_LISTENER_NAME_EXTERNAL_SSL_KEY_PASSWORD: password
+      KAFKA_LISTENER_NAME_EXTERNAL_SSL_KEYSTORE_LOCATION: /etc/kafka/secrets/admin.jks
+      KAFKA_LISTENER_NAME_EXTERNAL_SSL_KEYSTORE_PASSWORD: password
+      KAFKA_LISTENER_NAME_EXTERNAL_SSL_TRUSTSTORE_LOCATION: /etc/kafka/secrets/ca.jks
+      KAFKA_LISTENER_NAME_EXTERNAL_SSL_TRUSTSTORE_PASSWORD: password
+
+      KAFKA_CONFLUENT_SCHEMA_REGISTRY_SSL_KEY_PASSWORD: password
+      KAFKA_CONFLUENT_SCHEMA_REGISTRY_SSL_KEYSTORE_LOCATION: /certs/admin.jks
+      KAFKA_CONFLUENT_SCHEMA_REGISTRY_SSL_KEYSTORE_PASSWORD: password
+      KAFKA_CONFLUENT_SCHEMA_REGISTRY_SSL_TRUSTSTORE_LOCATION: /certs/ca.jks
+      KAFKA_CONFLUENT_SCHEMA_REGISTRY_SSL_TRUSTSTORE_PASSWORD: password
+      KAFKA_CONFLUENT_SCHEMA_REGISTRY_URL: https://schema-registry:8081
+
+      KAFKA_CONFLUENT_TELEMETRY_EXPORTER_C3PLUSPLUS_TYPE: "http"
+      KAFKA_CONFLUENT_TELEMETRY_EXPORTER_C3PLUSPLUS_ENABLED: "true"
+      KAFKA_CONFLUENT_TELEMETRY_EXPORTER_C3PLUSPLUS_METRICS_INCLUDE: "io.confluent.kafka.server.request.(?!.*delta).*|io.confluent.kafka.server.server.broker.state|io.confluent.kafka.server.replica.manager.leader.count|io.confluent.kafka.server.request.queue.size|io.confluent.kafka.server.broker.topic.failed.produce.requests.rate.1.min|io.confluent.kafka.server.tier.archiver.total.lag|io.confluent.kafka.server.request.total.time.ms.p99|io.confluent.kafka.server.broker.topic.failed.fetch.requests.rate.1.min|io.confluent.kafka.server.broker.topic.total.fetch.requests.rate.1.min|io.confluent.kafka.server.partition.caught.up.replicas.count|io.confluent.kafka.server.partition.observer.replicas.count|io.confluent.kafka.server.tier.tasks.num.partitions.in.error|io.confluent.kafka.server.broker.topic.bytes.out.rate.1.min|io.confluent.kafka.server.request.total.time.ms.p95|io.confluent.kafka.server.controller.active.controller.count|io.confluent.kafka.server.request.total.time.ms.p999|io.confluent.kafka.server.controller.active.broker.count|io.confluent.kafka.server.request.handler.pool.request.handler.avg.idle.percent.rate.1.min|io.confluent.kafka.server.controller.unclean.leader.elections.rate.1.min|io.confluent.kafka.server.replica.manager.partition.count|io.confluent.kafka.server.controller.unclean.leader.elections.total|io.confluent.kafka.server.partition.replicas.count|io.confluent.kafka.server.broker.topic.total.produce.requests.rate.1.min|io.confluent.kafka.server.controller.offline.partitions.count|io.confluent.kafka.server.socket.server.network.processor.avg.idle.percent|io.confluent.kafka.server.partition.under.replicated|io.confluent.kafka.server.log.log.start.offset|io.confluent.kafka.server.log.tier.size|io.confluent.kafka.server.log.size|io.confluent.kafka.server.tier.fetcher.bytes.fetched.total|io.confluent.kafka.server.request.total.time.ms.p50|io.confluent.kafka.server.tenant.consumer.lag.offsets|io.confluent.kafka.server.log.log.end.offset|io.confluent.kafka.server.broker.topic.bytes.in.rate.1.min|io.confluent.kafka.server.partition.under.min.isr|io.confluent.kafka.server.partition.in.sync.replicas.count|io.confluent.telemetry.http.exporter.batches.dropped|io.confluent.telemetry.http.exporter.items.total|io.confluent.telemetry.http.exporter.items.succeeded|io.confluent.telemetry.http.exporter.send.time.total.millis|io.confluent.kafka.server.controller.leader.election.rate.(?!.*delta).*|io.confluent.telemetry.http.exporter.batches.failed"
+      KAFKA_CONFLUENT_TELEMETRY_EXPORTER_C3PLUSPLUS_CLIENT_BASE_URL: "http://prometheus:9090/api/v1/otlp"
+      KAFKA_CONFLUENT_TELEMETRY_EXPORTER_C3PLUSPLUS_CLIENT_COMPRESSION: "gzip"
+      KAFKA_CONFLUENT_TELEMETRY_EXPORTER_C3PLUSPLUS_API_KEY: "dummy"
+      KAFKA_CONFLUENT_TELEMETRY_EXPORTER_C3PLUSPLUS_API_SECRET: "dummy"
+      KAFKA_CONFLUENT_TELEMETRY_EXPORTER_C3PLUSPLUS_BUFFER_PENDING_BATCHES_MAX: "80"
+      KAFKA_CONFLUENT_TELEMETRY_EXPORTER_C3PLUSPLUS_BUFFER_BATCH_ITEMS_MAX: "4000"
+      KAFKA_CONFLUENT_TELEMETRY_EXPORTER_C3PLUSPLUS_BUFFER_INFLIGHT_SUBMISSIONS_MAX: "10"
+      KAFKA_CONFLUENT_TELEMETRY_METRICS_COLLECTOR_INTERVAL_MS: "60000"
+      KAFKA_CONFLUENT_TELEMETRY_REMOTECONFIG_CONFLUENT_ENABLED: "false"
+      KAFKA_CONFLUENT_CONSUMER_LAG_EMITTER_ENABLED: "true"
+
+  schema-registry:
+    image: confluentinc/cp-schema-registry:${CONFLUENT_VERSION}
+    hostname: schema-registry
+    container_name: schema-registry
+    healthcheck:
+      start_period: 10s
+      interval: 10s
+      retries: 20
+      test: (echo >/dev/tcp/127.0.0.1/8081) &>/dev/null && exit 0 || exit 1
+    depends_on:
+      broker-0:
+        condition: service_healthy
+    ports:
+      - "8081:8081"
+    volumes:
+      - ./certs:/certs:ro
+    environment:
+      SCHEMA_REGISTRY_HOST_NAME: schema-registry
+      SCHEMA_REGISTRY_INTER_INSTANCE_PROTOCOL: https
+      SCHEMA_REGISTRY_LISTENERS: https://0.0.0.0:8081
+
+      SCHEMA_REGISTRY_KAFKASTORE_BOOTSTRAP_SERVERS: SSL://broker-0:9071
+      SCHEMA_REGISTRY_KAFKASTORE_SECURITY_PROTOCOL: SSL
+      SCHEMA_REGISTRY_KAFKASTORE_SSL_KEY_PASSWORD: password
+      SCHEMA_REGISTRY_KAFKASTORE_SSL_KEYSTORE_LOCATION: /certs/admin.jks
+      SCHEMA_REGISTRY_KAFKASTORE_SSL_KEYSTORE_PASSWORD: password
+      SCHEMA_REGISTRY_KAFKASTORE_SSL_TRUSTSTORE_LOCATION: /certs/ca.jks
+      SCHEMA_REGISTRY_KAFKASTORE_SSL_TRUSTSTORE_PASSWORD: password
+      SCHEMA_REGISTRY_KAFKASTORE_TOPIC: _confluent-schemaregistry
+      SCHEMA_REGISTRY_KAFKASTORE_TOPIC_REPLICATION_FACTOR: 1
+
+      SCHEMA_REGISTRY_SSL_KEY_PASSWORD: password
+      SCHEMA_REGISTRY_SSL_KEYSTORE_LOCATION: /certs/admin.jks
+      SCHEMA_REGISTRY_SSL_KEYSTORE_PASSWORD: password
+      SCHEMA_REGISTRY_SSL_TRUSTSTORE_LOCATION: /certs/ca.jks
+      SCHEMA_REGISTRY_SSL_TRUSTSTORE_PASSWORD: password
+
+  connect:
+    image: confluentinc/cp-server-connect:${CONFLUENT_VERSION}
+    hostname: connect
+    container_name: connect
+    healthcheck:
+      interval: 10s
+      retries: 20
+      # test: curl --fail --silent --cacert /certs/ca.crt --cert /certs/admin.crt --key /certs/admin.key https://connect:8083/ --output /dev/null || exit 1
+      test: (echo >/dev/tcp/127.0.0.1/8083) &>/dev/null && exit 0 || exit 1
+    depends_on:
+      schema-registry:
+        condition: service_healthy
+    ports:
+      - "8083:8083"
+    volumes:
+      - ./certs:/certs:ro
+    environment:
+      CONNECT_REST_ADVERTISED_HOST_NAME: connect
+      CONNECT_REST_ADVERTISED_PORT: 8083
+      CONNECT_REST_ADVERTISED_LISTENERS: https
+
+      CONNECT_ADMIN_BOOTSTRAP_SERVERS: broker-0:9071
+      CONNECT_ADMIN_SECURITY_PROTOCOL: SSL
+      CONNECT_ADMIN_SSL_KEY_PASSWORD: password
+      CONNECT_ADMIN_SSL_KEYSTORE_LOCATION: /certs/admin.jks
+      CONNECT_ADMIN_SSL_KEYSTORE_PASSWORD: password
+      CONNECT_ADMIN_SSL_TRUSTSTORE_LOCATION: /certs/ca.jks
+      CONNECT_ADMIN_SSL_TRUSTSTORE_PASSWORD: password
+
+      CONNECT_BOOTSTRAP_SERVERS: broker-0:9071
+      CONNECT_LISTENERS: "https://0.0.0.0:8083"
+      CONNECT_CONFIG_STORAGE_TOPIC: _connect0-configs
+      CONNECT_CONFIG_STORAGE_REPLICATION_FACTOR: 1
+      CONNECT_CONFLUENT_TOPIC_REPLICATION_FACTOR: 1
+      CONNECT_OFFSET_STORAGE_REPLICATION_FACTOR: 1
+      CONNECT_OFFSET_STORAGE_TOPIC: _connect0-offsets
+      CONNECT_STATUS_STORAGE_REPLICATION_FACTOR: 1
+      CONNECT_STATUS_STORAGE_TOPIC: _connect0-status
+      CONNECT_GROUP_ID: connect0
+
+      # Default converters
+      CONNECT_KEY_CONVERTER: org.apache.kafka.connect.json.JsonConverter
+      CONNECT_KEY_CONVERTER_SCHEMAS_ENABLE: 'false'
+      CONNECT_VALUE_CONVERTER: org.apache.kafka.connect.json.JsonConverter
+      CONNECT_VALUE_CONVERTER_SCHEMAS_ENABLE: 'false'
+
+      # Consumer Configs
+      CONNECT_CONSUMER_BOOTSTRAP_SERVERS: broker-0:9071
+      CONNECT_CONSUMER_SECURITY_PROTOCOL: SSL
+      CONNECT_CONSUMER_SSL_KEY_PASSWORD: password
+      CONNECT_CONSUMER_SSL_KEYSTORE_LOCATION: /certs/admin.jks
+      CONNECT_CONSUMER_SSL_KEYSTORE_PASSWORD: password
+      CONNECT_CONSUMER_SSL_TRUSTSTORE_LOCATION: /certs/ca.jks
+      CONNECT_CONSUMER_SSL_TRUSTSTORE_PASSWORD: password
+
+      # Listener Configs
+      CONNECT_LISTENERS_HTTPS_SSL_KEY_PASSWORD: password
+      CONNECT_LISTENERS_HTTPS_SSL_KEYSTORE_LOCATION: /certs/admin.jks
+      CONNECT_LISTENERS_HTTPS_SSL_KEYSTORE_PASSWORD: password
+      CONNECT_LISTENERS_HTTPS_SSL_TRUSTSTORE_LOCATION: /certs/ca.jks
+      CONNECT_LISTENERS_HTTPS_SSL_TRUSTSTORE_PASSWORD: password
+
+      # Producer Configs
+      CONNECT_PRODUCER_BOOTSTRAP_SERVERS: broker-0:9071
+      CONNECT_PRODUCER_SECURITY_PROTOCOL: SSL
+      CONNECT_PRODUCER_SSL_KEY_PASSWORD: password
+      CONNECT_PRODUCER_SSL_KEYSTORE_LOCATION: /certs/admin.jks
+      CONNECT_PRODUCER_SSL_KEYSTORE_PASSWORD: password
+      CONNECT_PRODUCER_SSL_TRUSTSTORE_LOCATION: /certs/ca.jks
+      CONNECT_PRODUCER_SSL_TRUSTSTORE_PASSWORD: password
+
+      CONNECT_PLUGIN_PATH: "/usr/share/java,/usr/share/confluent-hub-components"
+
+      # TLS Configs
+      CONNECT_SECURITY_PROTOCOL: SSL
+      CONNECT_SSL_KEY_PASSWORD: password
+      CONNECT_SSL_KEYSTORE_LOCATION: /certs/admin.jks
+      CONNECT_SSL_KEYSTORE_PASSWORD: password
+      CONNECT_SSL_TRUSTSTORE_LOCATION: /certs/ca.jks
+      CONNECT_SSL_TRUSTSTORE_PASSWORD: password
+
+  prometheus:
+    image: confluentinc/cp-enterprise-prometheus:${C3_VERSION}
+    hostname: cp-enterprise-prometheus
+    container_name: prometheus
+    volumes:
+      - ./config:/mnt/config:ro
+    # ports:
+    #   - "9090:9090"
+    environment:
+      CONFIG_PATH: "/mnt/config"
+      SHOULD_LOG_TO_FILE: false
+
+  alertmanager:
+    image: confluentinc/cp-enterprise-alertmanager:${C3_VERSION}
+    hostname: cp-enterprise-alertmanager
+    container_name: alertmanager
+    depends_on:
+      - prometheus
+    volumes:
+      - ./config:/mnt/config:ro
+    # ports:
+    #   - "9093:9093"
+    environment:
+      CONFIG_PATH: "/mnt/config"
+      SHOULD_LOG_TO_FILE: false
+
+  control-center:
+    image: confluentinc/cp-enterprise-control-center-next-gen:${C3_VERSION}
+    hostname: control-center
+    container_name: control-center
+    healthcheck:
+      start_period: 10s
+      interval: 10s
+      retries: 20
+      # test: curl --fail --silent http://control-center:9021 --output /dev/null || exit 1
+      test: (echo >/dev/tcp/127.0.0.1/9021) &>/dev/null && exit 0 || exit 1
+    depends_on:
+      schema-registry:
+        condition: service_healthy
+      broker-0:
+        condition: service_healthy
+      prometheus:
+        condition: service_started
+      alertmanager:
+        condition: service_started
+    volumes:
+      - ./config:/mnt/config:ro
+      - ./certs:/certs:ro
+    ports:
+      - 9021:9021
+    environment:
+      # If using Confluent Health+ for monitoring and alerting, uncomment the line below to run in management mode.
+      # CONTROL_CENTER_MODE_ENABLE: "management"
+      # You can now remove all Control Center "STREAMS", "MONITORING", and "METRICS" configurations
+
+      # general settings
+      CONTROL_CENTER_BOOTSTRAP_SERVERS: 'broker-0:9071'
+      CONTROL_CENTER_REPLICATION_FACTOR: 1
+      CONTROL_CENTER_INTERNAL_TOPICS_PARTITIONS: 1
+
+      CONTROL_CENTER_MONITORING_INTERCEPTOR_TOPIC_REPLICATION: 1
+      CONTROL_CENTER_MONITORING_INTERCEPTOR_TOPIC_PARTITIONS: 1
+      CONTROL_CENTER_METRICS_TOPIC_REPLICATION: 1
+      CONTROL_CENTER_METRICS_TOPIC_PARTITIONS: 1
+
+      # Amount of heap to use for internal caches. Increase for better throughput
+      CONTROL_CENTER_STREAMS_CACHE_MAX_BYTES_BUFFERING: 100000000
+      CONTROL_CENTER_STREAMS_CONSUMER_REQUEST_TIMEOUT_MS: "960032"
+      CONTROL_CENTER_STREAMS_NUM_STREAM_THREADS: 1
+
+      CONFLUENT_METRICS_TOPIC_REPLICATION: 1
+
+      # prometheus and alertmanager
+      CONTROL_CENTER_PROMETHEUS_ENABLE: true
+      CONTROL_CENTER_PROMETHEUS_URL: http://prometheus:9090
+      CONTROL_CENTER_PROMETHEUS_RULES_FILE: /mnt/config/trigger_rules-generated.yml
+      CONTROL_CENTER_ALERTMANAGER_URL: http://alertmanager:9093
+      CONTROL_CENTER_ALERTMANAGER_CONFIG_FILE: /mnt/config/alertmanager-generated.yml
+
+      # C3 configs
+      # HTTPS to Control Center UI 
+      CONTROL_CENTER_REST_LISTENERS: https://0.0.0.0:9021
+      CONTROL_CENTER_REST_SSL_KEY_PASSWORD: password
+      CONTROL_CENTER_REST_SSL_KEYSTORE_LOCATION: /certs/admin.jks
+      CONTROL_CENTER_REST_SSL_KEYSTORE_PASSWORD: password
+      CONTROL_CENTER_REST_SSL_TRUSTSTORE_LOCATION: /certs/ca.jks
+      CONTROL_CENTER_REST_SSL_TRUSTSTORE_PASSWORD: password
+
+      # Configs for C3 to SR
+      # CONTROL_CENTER_SCHEMA_REGISTRY_ENABLE: true
+      CONTROL_CENTER_SCHEMA_REGISTRY_SSL_KEY_PASSWORD: password
+      CONTROL_CENTER_SCHEMA_REGISTRY_SSL_KEYSTORE_LOCATION: /certs/admin.jks
+      CONTROL_CENTER_SCHEMA_REGISTRY_SSL_KEYSTORE_PASSWORD: password
+      CONTROL_CENTER_SCHEMA_REGISTRY_SSL_TRUSTSTORE_LOCATION: /certs/ca.jks
+      CONTROL_CENTER_SCHEMA_REGISTRY_SSL_TRUSTSTORE_PASSWORD: password
+      CONTROL_CENTER_SCHEMA_REGISTRY_URL: https://schema-registry:8081
+
+      # SSL configs for Streams in C3
+      CONTROL_CENTER_STREAMS_SECURITY_PROTOCOL: SSL
+      CONTROL_CENTER_STREAMS_SSL_KEY_PASSWORD: password
+      CONTROL_CENTER_STREAMS_SSL_KEYSTORE_LOCATION: /certs/admin.jks
+      CONTROL_CENTER_STREAMS_SSL_KEYSTORE_PASSWORD: password
+      CONTROL_CENTER_STREAMS_SSL_TRUSTSTORE_LOCATION: /certs/ca.jks
+      CONTROL_CENTER_STREAMS_SSL_TRUSTSTORE_PASSWORD: password
+
+  restproxy:
+    image: confluentinc/cp-kafka-rest:${CONFLUENT_VERSION}
+    hostname: restproxy
+    container_name: restproxy
+    depends_on:
+      broker-0:
+        condition: service_healthy
+      schema-registry:
+        condition: service_healthy
+    healthcheck:
+      start_period: 10s
+      interval: 10s
+      retries: 20
+      # test: curl --fail --silent --cacert /certs/ca.crt --cert /certs/admin.crt --key /certs/admin.key https://restproxy:8082/ || exit 1
+      test: (echo >/dev/tcp/127.0.0.1/8082) &>/dev/null && exit 0 || exit 1
+    ports:
+      - "8082:8082"
+    volumes:
+      - ./certs:/certs:ro
+    environment:
+      KAFKA_REST_BOOTSTRAP_SERVERS: SSL://broker-0:9071
+
+      KAFKA_REST_SECURITY_PROTOCOL: SSL
+      KAFKA_REST_SSL_KEY_PASSWORD: password
+      KAFKA_REST_SSL_KEYSTORE_LOCATION: /certs/admin.jks
+      KAFKA_REST_SSL_KEYSTORE_PASSWORD: password
+      KAFKA_REST_SSL_TRUSTSTORE_LOCATION: /certs/ca.jks
+      KAFKA_REST_SSL_TRUSTSTORE_PASSWORD: password
+
+      KAFKA_REST_SCHEMA_REGISTRY_URL: https://schema-registry:8081
+      KAFKA_REST_SCHEMA_REGISTRY_SSL_KEY_PASSWORD: password
+      KAFKA_REST_SCHEMA_REGISTRY_SSL_KEYSTORE_LOCATION: /certs/admin.jks
+      KAFKA_REST_SCHEMA_REGISTRY_SSL_KEYSTORE_PASSWORD: password
+      KAFKA_REST_SCHEMA_REGISTRY_SSL_TRUSTSTORE_LOCATION: /certs/ca.jks
+      KAFKA_REST_SCHEMA_REGISTRY_SSL_TRUSTSTORE_PASSWORD: password
+
+      KAFKA_REST_CLIENT_SECURITY_PROTOCOL: SSL
+      KAFKA_REST_CLIENT_SSL_KEY_PASSWORD: password
+      KAFKA_REST_CLIENT_SSL_KEYSTORE_LOCATION: /certs/admin.jks
+      KAFKA_REST_CLIENT_SSL_KEYSTORE_PASSWORD: password
+      KAFKA_REST_CLIENT_SSL_TRUSTSTORE_LOCATION: /certs/ca.jks
+      KAFKA_REST_CLIENT_SSL_TRUSTSTORE_PASSWORD: password
+
+      KAFKA_REST_LISTENERS: https://0.0.0.0:8082
