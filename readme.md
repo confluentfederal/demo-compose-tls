@@ -14,10 +14,15 @@ Note: The environment variable `EXTERNAL_HOSTNAME` needs to be defined. This is 
 From an external host you could run the command
 
 ```sh
+# Create the client properties with TLS
+cat <<EOF > ./client.properties
+security.protocol=SSL
+ssl.truststore.location=./certs/ca.jks
+ssl.truststore.password=password
+EOF
+
 kafka-topics \
-    --bootstrap-server server.mydomain.com:9092 \
-    --config security.mechanism=SSL \
-    --config ssl.truststore.location=./certs/ca.jks \
-    --config ssl.truststore.password=password \
+    --bootstrap-server localhost:9092 \
+    --command-config ./client.properties \
     --list
 ```

@@ -9,9 +9,15 @@ CERT_ADMIN_STATE=${CERT_ADMIN_STATE:-PA}
 
 CLIENT_USERNAME=${CLIENT_USERNAME:-client}
 
-if [ -z "$EXTERNAL_HOSTNAME" ]; then
+export EXTERNAL_HOSTNAME=${EXTERNAL_HOSTNAME:-localhost}
+
+if [ -z "${EXTERNAL_HOSTNAME}" ]; then
     echo "Environment variable EXTERNAL_HOSTNAME is not set. This needs to be set so external clients can connect to the platform."
     exit 1
+else
+    echo
+    echo "Using an external hostname of \"${EXTERNAL_HOSTNAME}\""
+    echo
 fi
 
 for cmd in docker openssl keytool curl; do
@@ -88,7 +94,7 @@ echo
 # Deploy the platform
 # docker compose up -d broker-0 control-center schema-registry connect restproxy
 docker compose up -d broker-0 control-center schema-registry
-if [ ! $? ]; then
+if [ $? -ne 0 ]; then
     echo "Failed to deploy the platform."
     exit 1
 fi
